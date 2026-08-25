@@ -93,6 +93,13 @@ def page1():
 # PAGE 2 - DATA CLEANING
 def page2():
     st.subheader("Data Cleaning")
+
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Total Records", len(df_clean))
+    #col2.metric("Languages Detected", df_clean["lang"].nunique())
+    #col3.metric("Avg. Text Length", f"{df_clean['text'].str.len().mean():.0f} chars")
+
+
     st.dataframe(df_clean)
 
 
