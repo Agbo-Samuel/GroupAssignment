@@ -15,6 +15,17 @@ from PIL import Image
 
 ################# Global Setups ###################################
 st.set_page_config(page_title="Multilingual Sentiment Analysis", page_icon="📈", layout="wide")
+#
+
+st.markdown("""
+    <div style="text-align:center; padding: 1rem 0;">
+        <h1>🌍 Multilingual Sentiment Analysis</h1>
+        <p style="color:gray;">FastText embeddings · SVM & Logistic Regression · Cross-lingual insights</p>
+    </div>
+""", unsafe_allow_html=True)
+
+#
+
 
 
 
@@ -101,5 +112,11 @@ pages = {
     "Text representation": page4,
 }
 
-selected_page = st.sidebar.selectbox("Select Page", list(pages.keys()))
-pages[selected_page]()
+#selected_page = st.sidebar.selectbox("Select Page", list(pages.keys()))
+#pages[selected_page]()
+
+tab1, tab2, tab3, tab4 = st.tabs(["📊 Raw Data", "🧹 Cleaning", "🔍 EDA", "🔤 Representation"])
+with tab1:
+    page1()
+with tab2:
+    page2()
