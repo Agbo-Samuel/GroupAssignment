@@ -4,6 +4,7 @@ import pandas as pd
 import re
 import nltk
 import ssl
+from pathlib import Path
 from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
 from pyarrow import csv
@@ -28,7 +29,9 @@ nltk.download('punkt', quiet=True)
 ## Load + parse dataset (cached so it only runs once, not on every rerun)
 @st.cache_data
 def load_data():
-    dataset = r"C:\Users\samue\PycharmProjects\GroupAssignment\multilingual_sentiment_train.csv"
+    base_dir = Path(__file__).resolve().parent
+    dataset = base_dir / "multilingual_sentiment_train.csv"
+
     with open(dataset, "r", encoding="UTF-8") as file:
         lines = file.readlines()
 
@@ -51,7 +54,7 @@ def load_data():
 @st.cache_data
 def clean_text(df):
     cleaned = []
-    for text in df["Text"]:
+    for text in df["text"]:
         text = text.lower()
         text = re.sub(r'<.*?>', '', text)      # Remove HTML
         text = re.sub(r'[^\w\s]', '', text)    # Remove punctuation
