@@ -19,9 +19,11 @@ st.set_page_config(page_title="Multilingual Sentiment Analysis", page_icon="📈
 st.markdown("""
     <div style="text-align:center; padding: 1rem 0;">
         <h1>🌍 Multilingual Sentiment Analysis</h1>
-        <p style="color:gray;">FastText embeddings · SVM & Logistic Regression · Cross-lingual insights</p>
+        <p style="color:gray;">✅ Group 15 · SVM + Logistic Regression · Model Evaluation: Accuracy, Precision, Recall,
+        F1, Confusion Matrix, ROC-AUC</p>
     </div>
 """, unsafe_allow_html=True)
+
 
 ## SSL context for NLTK downloads
 ssl._create_default_https_context = ssl._create_unverified_context
