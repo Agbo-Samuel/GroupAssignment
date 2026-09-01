@@ -7,15 +7,14 @@ import ssl
 from pathlib import Path
 from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
-from pyarrow import csv
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix, roc_auc_score, auc
 from PIL import Image
+import plotly.express as px
 
 
 ################# Global Setups ###################################
 st.set_page_config(page_title="Multilingual Sentiment Analysis", page_icon="📈", layout="wide")
-#
 
 st.markdown("""
     <div style="text-align:center; padding: 1rem 0;">
@@ -23,11 +22,6 @@ st.markdown("""
         <p style="color:gray;">FastText embeddings · SVM & Logistic Regression · Cross-lingual insights</p>
     </div>
 """, unsafe_allow_html=True)
-
-#
-
-
-
 
 ## SSL context for NLTK downloads
 ssl._create_default_https_context = ssl._create_unverified_context
@@ -37,28 +31,24 @@ nltk.download('stopwords', quiet=True)
 nltk.download('punkt', quiet=True)
 
 
-## Load + parse dataset (cached so it only runs once, not on every rerun)
+# ---------------------------------------
+# Load dataset (cached so it only runs once, not on every rerun).
+#
+# NOTE: the source file already has a proper header ("label,text,lang") and
+# is comma-delimited, so we can just use pd.read_csv() directly - no need to
+# manually split lines on tabs. This also loads the pre-sampled file
+# (multilingual_sentiment_sample.csv), which was stratified by language and
+# label ahead of time so every language is represented without pulling in
+# the full ~226k-row source file. See stratified_sample.py for how that
+# sample was generated - rerun it with a different PER_LANG_CAP if you want
+# a bigger or smaller dataset.
 @st.cache_data
 def load_data():
     base_dir = Path(__file__).resolve().parent
-    dataset = base_dir / "multilingual_sentiment_train.csv"
+    dataset = base_dir / "multilingual_sentiment_sample.csv"
+    df = pd.read_csv(dataset)
+    return df
 
-    with open(dataset, "r", encoding="UTF-8") as file:
-        lines = file.readlines()
-
-    parsed_data = []
-    for line in lines:
-        parts = line.strip().split("\t")
-        if len(parts) == 2:
-            #FIRST = TEXT
-            #SECOND = CLASS
-            text, class_label = parts
-            parsed_data.append([text, class_label])
-        else:
-            parsed_data.append([line.strip(), "Unknown"])
-
-    df = pd.DataFrame(parsed_data, columns=["text", "label"])
-    return lines, df
 
 # ---------------------------------------
 # Data cleaning (cached, returns a NEW dataframe instead of mutating a shared one)
@@ -66,10 +56,10 @@ def load_data():
 def clean_text(df):
     cleaned = []
     for text in df["text"]:
-        text = text.lower()
-        text = re.sub(r'<.*?>', '', text)      # Remove HTML
-        text = re.sub(r'[^\w\s]', '', text)    # Remove punctuation
-        text = re.sub(r'\d+', '', text)        # Remove digits
+        text = str(text).lower()
+        text = re.sub(r'<.*?>', '', text)         # Remove HTML
+        text = re.sub(r'[^\w\s]', '', text)       # Remove punctuation
+        text = re.sub(r'\d+', '', text)           # Remove digits
         text = re.sub(r'\s+', ' ', text).strip()  # Normalize whitespace
         cleaned.append(text)
 
@@ -78,16 +68,29 @@ def clean_text(df):
     return df
 
 
-# Load once at the top — this is just data prep, no st.write/st.dataframe here
-lines, df = load_data()
+df = load_data()
 df_clean = clean_text(df)
+
+
+@st.cache_data
+def dedupe_data(df):
+    shape_before = df.shape
+    df_dedup = df.drop_duplicates().reset_index(drop=True)
+    shape_after = df_dedup.shape
+    return df_dedup, shape_before, shape_after
 
 
 # ---------------------------------------
 # PAGE 1 - RAW DATA
 def page1():
     st.subheader("Raw Unprocessed Data")
-    st.write(lines)
+    st.caption(f"{len(df):,} rows · {df['lang'].nunique()} languages (pre-sampled for app performance).")
+
+    # Never dump the entire dataset to the page with st.write() - rendering
+    # every row into the DOM at once is what was crashing the app on the
+    # full file. Show a bounded preview instead.
+    preview_rows = st.slider("Rows to preview", 10, min(500, len(df)), min(50, len(df)))
+    st.dataframe(df.head(preview_rows), use_container_width=True)
 
 
 # PAGE 2 - DATA CLEANING
@@ -96,15 +99,24 @@ def page2():
 
     col1, col2, col3 = st.columns(3)
     col1.metric("Total Records", len(df_clean))
-    #col2.metric("Languages Detected", df_clean["lang"].nunique())
-    #col3.metric("Avg. Text Length", f"{df_clean['text'].str.len().mean():.0f} chars")
+    col2.metric("Languages", df_clean["lang"].nunique())
+    col3.metric("Avg. Text Length", f"{df_clean['text'].astype(str).str.len().mean():.0f} chars")
 
-
-    st.dataframe(df_clean)
+    st.dataframe(df_clean.head(200), use_container_width=True)
 
 
 def page3():
     st.subheader("Exploratory Text Analysis")
+
+    lang_counts = df_clean["lang"].value_counts().reset_index()
+    lang_counts.columns = ["lang", "count"]
+    fig = px.bar(lang_counts, x="lang", y="count", title="Rows per Language")
+    st.plotly_chart(fig, use_container_width=True)
+
+    label_counts = df_clean["label"].value_counts().reset_index()
+    label_counts.columns = ["label", "count"]
+    fig2 = px.pie(label_counts, names="label", values="count", title="Sentiment Label Balance")
+    st.plotly_chart(fig2, use_container_width=True)
 
 
 def page4():
@@ -119,11 +131,12 @@ pages = {
     "Text representation": page4,
 }
 
-#selected_page = st.sidebar.selectbox("Select Page", list(pages.keys()))
-#pages[selected_page]()
-
 tab1, tab2, tab3, tab4 = st.tabs(["📊 Raw Data", "🧹 Cleaning", "🔍 EDA", "🔤 Representation"])
 with tab1:
     page1()
 with tab2:
     page2()
+with tab3:
+    page3()
+with tab4:
+    page4()
