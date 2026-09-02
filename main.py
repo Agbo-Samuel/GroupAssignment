@@ -25,7 +25,8 @@ st.set_page_config(page_title="Multilingual Sentiment Analysis", page_icon="📈
 st.markdown("""
     <div style="text-align:center; padding: 1rem 0;">
         <h1>🌍 Multilingual Sentiment Analysis</h1>
-        <p style="color:gray;">FastText embeddings · SVM & Logistic Regression · Cross-lingual insights</p>
+        <p style="color:gray;"> 📊 Group 15 · FastText embeddings · SVM & Logistic Regression · Cross-lingual insights</p>
+        <p style="color:gray;"> 👥 Group Members :  Pascal Adiali · Samuel Agbo · Winifred Koran Takyi · Kweku Afedzi Hayford </p>
     </div>
 """, unsafe_allow_html=True)
 
