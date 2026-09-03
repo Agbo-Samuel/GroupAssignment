@@ -26,7 +26,8 @@ st.markdown("""
     <div style="text-align:center; padding: 1rem 0;">
         <h1>🌍 Multilingual Sentiment Analysis</h1>
         <p style="color:gray;"> 📊 Group 15 · FastText embeddings · SVM & Logistic Regression · Cross-lingual insights</p>
-        <p style="color:gray;"> 👥 Group Members :  Pascal Adiali · Samuel Agbo · Winifred Koran Takyi · Kweku Afedzi Hayford </p>
+        <p style="color:gray;"> 👥 Group Members :  Pascal Adiali · Samuel Agbo · Winifred Korang Takyi · 
+        Kweku Afedzi Hayford · Emmanuel Agyapong </p>
     </div>
 """, unsafe_allow_html=True)
 
@@ -193,6 +194,11 @@ df_prep = preprocess_text(df_clean)
 # =========================================================
 def page1():
     st.subheader("Raw Unprocessed Data")
+    st.markdown("""
+        This page displays the Data in its raw unprocessed form.
+        """)
+
+
     st.caption(f"{len(df):,} rows · {df['lang'].nunique()} languages (pre-sampled for app performance).")
 
     preview_rows = st.slider("Rows to preview", 10, min(500, len(df)), min(50, len(df)))
@@ -270,6 +276,11 @@ def page3():
 # =========================================================
 # PAGE 4 - TEXT REPRESENTATION (FastText embeddings)
 # =========================================================
+FT_VECTOR_SIZE = 64
+FT_EPOCHS = 4
+FT_MIN_COUNT = 3
+
+
 def page4():
     st.subheader("Text Representation: FastText Word Embeddings")
 
@@ -277,52 +288,27 @@ def page4():
     A FastText model is trained directly on this dataset's cleaned, tokenized text.
     FastText represents words using subword (character n-gram) information, which
     helps it handle rare words and multiple languages/scripts better than word2vec.
+    Each document's vector is simply the average of its word vectors.
     """)
-
-    c1, c2, c3 = st.columns(3)
-    vector_size = c1.select_slider("Embedding dimension", options=[50, 64, 100], value=64)
-    epochs = c2.slider("Training epochs", 2, 8, 4)
-    min_count = c3.slider("Minimum token frequency", 1, 5, 3)
 
     tokens_list = df_prep["Tokens_clean"].tolist()
 
     t0 = time.time()
-    ft_model = train_fasttext(tokens_list, vector_size, epochs, min_count)
+    ft_model = train_fasttext(tokens_list, FT_VECTOR_SIZE, FT_EPOCHS, FT_MIN_COUNT)
     train_time = time.time() - t0
 
-    st.success(
-        f"FastText trained on {len(tokens_list):,} documents · "
-        f"vocabulary size: {len(ft_model.wv):,} · training time: {train_time:.1f}s"
-    )
-
-    cache_key = (vector_size, epochs, min_count)
-    X = build_doc_vectors(ft_model, tokens_list, vector_size, cache_key)
+    cache_key = (FT_VECTOR_SIZE, FT_EPOCHS, FT_MIN_COUNT)
+    X = build_doc_vectors(ft_model, tokens_list, FT_VECTOR_SIZE, cache_key)
     st.session_state["X"] = X
     st.session_state["y"] = df_prep["label"].values
     st.session_state["ft_ready"] = True
 
-    st.markdown("#### Explore the embedding space")
-    word = st.text_input("Enter a word to find its nearest neighbours in the trained embedding space:", "good")
-    if word:
-        try:
-            similar = ft_model.wv.most_similar(word.lower().strip(), topn=10)
-            sim_df = pd.DataFrame(similar, columns=["word", "cosine_similarity"])
-            st.dataframe(sim_df, use_container_width=True)
-        except KeyError:
-            st.warning("That word wasn't found in the vocabulary (below the minimum frequency threshold).")
-
-    st.markdown("#### 2D projection of the most frequent words (PCA)")
-    from collections import Counter
-    all_tokens = [t for toks in tokens_list for t in toks]
-    top_words = [w for w, _ in Counter(all_tokens).most_common(60) if w in ft_model.wv]
-    if len(top_words) > 2:
-        vectors = np.vstack([ft_model.wv[w] for w in top_words])
-        coords = PCA(n_components=2, random_state=42).fit_transform(vectors)
-        plot_df = pd.DataFrame(coords, columns=["x", "y"])
-        plot_df["word"] = top_words
-        fig = px.scatter(plot_df, x="x", y="y", text="word", title="Top 60 Words Projected to 2D")
-        fig.update_traces(textposition="top center")
-        st.plotly_chart(fig, use_container_width=True)
+    st.success(
+        f"FastText trained on {len(tokens_list):,} documents · "
+        f"vocabulary size: {len(ft_model.wv):,} · embedding dimension: {FT_VECTOR_SIZE} · "
+        f"training time: {train_time:.1f}s"
+    )
+    st.caption(f"Document embedding matrix: {X.shape[0]:,} documents × {X.shape[1]} dimensions.")
 
 
 # =========================================================
